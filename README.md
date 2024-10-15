@@ -82,3 +82,20 @@ a handle to the `Receiver` end of the channel. Flume takes care of ensuring that
 scheduling work becomes just producing new task definitions onto a `flume::Sender`.
 
 You can checkout how this works in the `async.rs` file in this repo.
+
+## Gotchas
+
+There is one weird thing, which I have not totally figured out. If we do not include the `"sync"` feature in monoio
+
+
+```toml
+[dependencies]
+flume = "0.11.0"
+futures-util = "0.3.31"
+monoio = { version = "0.2.4", features = ["default", "sync"] }
+                                                     ^^^^^^
+                                                    this guy
+```
+
+We end up just blocking forever. It seems like somehow, whatever flume is doing to implement its `RecvFut`
+does not play nicely by default with monoio's waking behavior. 🤷‍♂️
