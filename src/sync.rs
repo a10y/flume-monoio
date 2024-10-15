@@ -27,43 +27,43 @@ fn main() {
     // when a task gets completed, an empty message is sent back over this channel to the driver.
     let (complete_tx, complete_rx) = flume::bounded(100_000_000);
 
-
     // launch all of our worker threads
-    let threads: Vec<_> = (0..=3).map(|tid| {
-      let rx = rx.clone();
-      let complete_tx = complete_tx.clone();
+    let threads: Vec<_> = (0..=3)
+        .map(|tid| {
+            let rx = rx.clone();
+            let complete_tx = complete_tx.clone();
 
-      std::thread::spawn(move || {
-        println!("[INIT] worker {tid}...");
-        // bind to CPU of TID
-        monoio::utils::bind_to_cpu_set([tid]).unwrap_or_else(|e| panic!("failed binding {tid} to CPU set: {e}"));
-        println!("[BIND] worker {tid} now bound to core {tid}");
+            std::thread::spawn(move || {
+                println!("[INIT] worker {tid}...");
+                // bind to CPU of TID
+                monoio::utils::bind_to_cpu_set([tid])
+                    .unwrap_or_else(|e| panic!("failed binding {tid} to CPU set: {e}"));
+                println!("[BIND] worker {tid} now bound to core {tid}");
 
-            println!("[WORKER] {tid} entering main event loop");
-            // Why is only one of these running at a time?
-            // Or sometimes none of them?
-            let mut solved = 0;
-            while let Ok(next_msg) = rx.recv() {
-              let answer = match next_msg {
-                  ComputeRequest::Add(a, b) => ComputeResult(a.wrapping_add(b)),
-                  ComputeRequest::Sub(a, b) => ComputeResult(a.wrapping_sub(b)),
-                  ComputeRequest::Mul(a, b) => ComputeResult(a.wrapping_mul(b)),
-                  ComputeRequest::Div(a, b) => ComputeResult(a.wrapping_div(b)),
-              };
+                println!("[WORKER] {tid} entering main event loop");
+                // Why is only one of these running at a time?
+                // Or sometimes none of them?
+                let mut solved = 0;
+                while let Ok(next_msg) = rx.recv() {
+                    let answer = match next_msg {
+                        ComputeRequest::Add(a, b) => ComputeResult(a.wrapping_add(b)),
+                        ComputeRequest::Sub(a, b) => ComputeResult(a.wrapping_sub(b)),
+                        ComputeRequest::Mul(a, b) => ComputeResult(a.wrapping_mul(b)),
+                        ComputeRequest::Div(a, b) => ComputeResult(a.wrapping_div(b)),
+                    };
 
-              // check our work
-              next_msg.check_answer(answer);
-              complete_tx.send(()).expect("sending completion msg");
-              solved += 1;
-              if solved % 1_000_000 == 0 {
-                println!("[PROGRESS] {tid} has solved {solved}");
-              }
-            }
-            println!("[COMPLETE] {tid} solved {solved} problems in total");
-      })
-    })
-    .collect();
-
+                    // check our work
+                    next_msg.check_answer(answer);
+                    complete_tx.send(()).expect("sending completion msg");
+                    solved += 1;
+                    if solved % 1_000_000 == 0 {
+                        println!("[PROGRESS] {tid} has solved {solved}");
+                    }
+                }
+                println!("[COMPLETE] {tid} solved {solved} problems in total");
+            })
+        })
+        .collect();
 
     // main process runs on CPU 3
     monoio::utils::bind_to_cpu_set([3]).expect("binding driver thread");
@@ -91,7 +91,6 @@ fn main() {
     });
 
     println!("[DRIVER] all completions received");
-
 
     // explicitly close sender so the worker threads exit.
     drop(rx);

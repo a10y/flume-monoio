@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 flume = "0.11.0"
 futures-util = "0.3.31"
-monoio = "0.2.4"
+monoio = { version = "0.2.4", features = ["default", "sync"] }
 
 [[bin]]
 name = "sync"
